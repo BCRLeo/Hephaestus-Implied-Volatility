@@ -83,11 +83,12 @@ def compute_historical_volatility(returns, window=30):
 # Each model function fits a model on the returns and returns a one-step-ahead forecast.
 # The forecast is then annualized by multiplying by √252.
 
-def run_garch_11(returns, forecast_horizon=1):
+def run_garch_11(returns, forecast_horizon):
     """
     Fits a standard GARCH(1,1) model and returns its one-step-ahead forecast,
     annualized.
     """
+    print("this si the forecast horizon{}".format(forecast_horizon))
     model = arch_model(returns, vol='GARCH', p=1, q=1, dist='normal')
     res = model.fit(disp='off')
     forecast = res.forecast(horizon=forecast_horizon)
@@ -138,7 +139,23 @@ def run_figarch(returns, forecast_horizon=1):
     raise NotImplementedError("FIGARCH model is not implemented due to lack of available library support.")
 
 def run_aparch(returns, forecast_horizon=1):
-    raise NotImplementedError("APARCH model is not implemented.")
+    """
+    Fits an APARCH model to the returns and returns its one-step-ahead forecast,
+    annualized.
+    
+    Uses the APARCH class from arch.univariate with parameters p=1, o=1, q=1,
+    and a power parameter of 2.0 (i.e. similar to a GARCH model but allowing for
+    asymmetric effects). The forecasted volatility is annualized by multiplying by √252.
+    """
+    from arch.univariate import APARCH
+    # Initialize the APARCH model with desired parameters.
+    model = APARCH(returns, p=1, q=1, power=2.0, dist='normal')
+    res = model.fit(disp='off')
+    forecast = res.forecast(horizon=forecast_horizon)
+    forecast_var = forecast.variance.iloc[-1]
+    forecast_vol = np.sqrt(forecast_var) * np.sqrt(252)  # Annualize the forecast
+    return forecast_vol, res
+
 
 def run_cgarch(returns, forecast_horizon=1):
     raise NotImplementedError("CGARCH model is not implemented.")
@@ -272,6 +289,57 @@ def plot_multiple_forecasts(forecast_dict, hist_vol, ticker, years_span, forecas
         for model_name, forecast_series in forecast_dict.items():
             plot_volatility(model_name, hist_vol, forecast_series, ticker, years_span, forecast_horizon)
 
+
+
+
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, mean_squared_log_error
+
+def compute_metrics(y_true, y_pred):
+    """
+    Compute evaluation metrics between two Series.
+    
+    Parameters:
+        y_true (pd.Series): Actual volatility values.
+        y_pred (pd.Series): Forecasted volatility values.
+        
+    Returns:
+        dict: Dictionary containing MAE, MSE, R², and MSLE.
+    """
+    mae = mean_absolute_error(y_true, y_pred)
+    mse = mean_squared_error(y_true, y_pred)
+    r2 = r2_score(y_true, y_pred)
+    msle = mean_squared_log_error(y_true, y_pred)
+    
+    return {"MAE": mae, "MSE": mse, "R2": r2, "MSLE": msle}
+
+def evaluate_forecast(forecast_series, hist_vol):
+    """
+    Evaluates the forecasted volatility against the actual historical volatility.
+    It aligns the forecast dates with the historical volatility (using the forecast series index)
+    and then computes the evaluation metrics.
+    
+    Parameters:
+        forecast_series (pd.Series): Annualized forecasted volatility (rolling forecast).
+        hist_vol (pd.Series): Annualized historical volatility computed externally.
+    
+    Returns:
+        dict: Dictionary of evaluation metrics.
+    """
+    # Align actual volatility with forecast dates.
+    y_true = hist_vol.loc[forecast_series.index]
+    y_pred = forecast_series
+    metrics = compute_metrics(y_true, y_pred)
+    
+    # Optionally, print the metrics:
+    print("Evaluation Metrics:")
+    print(f"  MAE:  {metrics['MAE']:.4f}")
+    print(f"  MSE:  {metrics['MSE']:.4f}")
+    print(f"  R²:   {metrics['R2']:.4f}")
+    print(f"  MSLE: {metrics['MSLE']:.4f}")
+    
+    return metrics
+
+
 # ---------------- Main Interactive Function ----------------
 
 def main():
@@ -325,6 +393,7 @@ def main():
         model_name, model_func = MODELS[model_choice]
         forecast_series = compute_rolling_forecast(model_func, returns, initial_window)
         plot_volatility(model_name, hist_vol, forecast_series, ticker, years_input, forecast_horizon)
+        metrics = evaluate_forecast(forecast_series, hist_vol)
     
     elif display_choice == "2":
         print("\nAvailable models:")
