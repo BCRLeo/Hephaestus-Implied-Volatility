@@ -65,7 +65,8 @@ def compute_returns(price_series):
     Returns the returns in percentage terms.
     """
     returns = np.log(price_series).diff().dropna()
-    return returns
+    returns = returns * 100 #rescalled 
+    return returns 
 
 def compute_historical_volatility(returns, window=30):
     """
@@ -81,7 +82,7 @@ def run_garch_11(returns, forecast_horizon):
     """
     Fits a standard GARCH(1,1) model and returns its one-step-ahead forecast, annualized.
     """
-    model = arch_model(returns, vol='GARCH', p=1, q=1, dist='normal', rescale=False)
+    model = arch_model(returns, vol='GARCH', p=1, q=1, dist='normal')
     res = model.fit(disp='off')
     forecast = res.forecast(horizon=forecast_horizon)
     forecast_var = forecast.variance.iloc[-1]
@@ -242,6 +243,11 @@ def compute_metrics(y_true, y_pred):
     Returns:
         dict: Dictionary containing MAE, MSE, R², and MSLE.
     """
+
+    if isinstance(y_true, pd.Series):
+        y_true = y_true.to_numpy()
+    if isinstance(y_pred, pd.Series):
+        y_pred = y_pred.to_numpy()
     mae = mean_absolute_error(y_true, y_pred)
     mse = mean_squared_error(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
@@ -293,7 +299,7 @@ def main():
         tickers_list = [
             "^GSPC", "^IXIC", "BTC-USD", "GC=F", "EURUSD=X", "EURGBP=X",
             "^FTSE", "^FCHI", "^GDAXI", "FTSEMIB.MI", "^AXJO", "^HSI",
-            "^N225", "^NSEI", "^JTOPI", "MERVAL.BA"
+            "^N225", "^NSEI", "1308.T", "^MERVAL"
         ]
         
         results = {}
