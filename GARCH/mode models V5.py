@@ -104,7 +104,6 @@ def run_aparch(returns, forecast_horizon=1):
     """
     Fits an APARCH model and returns a one-step-ahead forecast.
     
-    This version uses the same extraction logic as your working rolling_forecast code.
     """
     am = arch_model(returns, vol='APARCH', p=1, q=1, dist='normal', rescale=False)
     # Use robust options for fitting as in your working code
@@ -118,7 +117,6 @@ def run_figarch(returns, forecast_horizon=1):
     """
     Fits a FIGARCH model and returns a one-step-ahead forecast.
     
-    This version is based on the code that worked for you.
     """
     am = arch_model(returns, vol='FIGARCH', p=1, q=1, dist='normal', rescale=False)
     res = am.fit(disp='off')
@@ -240,8 +238,6 @@ def compute_metrics(y_true, y_pred):
     """
     Compute evaluation metrics between two Series.
     
-    Returns:
-        dict: Dictionary containing MAE, MSE, R², and MSLE.
     """
 
     if isinstance(y_true, pd.Series):
